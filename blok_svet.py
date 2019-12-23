@@ -1,6 +1,7 @@
 from tabulate import tabulate
 import constants as con
 from random import random, seed
+import numpy as np
 
 
 def init_board(n, g):
@@ -107,13 +108,24 @@ def main():
     #         if board[i][j] is not None:
     #             print(i, j, 'Q', board[i][j].max_Q().val)
 
-    environment, agent = Environment(0.9), Agent(0.9)
+    # for l in con.ALPHA:
+    environment, agent = Environment(0.9), Agent(0.9, 1, 0.1)
+    time = 0
     while agent.epsilon > 0:
         a = agent.new_action()
         S, R = environment.simulator(a)
-        agent.update(S, R)
-        environment.update(S)
+        if environment.end:
+            agent.update(S, R)
+            environment.end = False
+            environment.reset()
+            agent.reset()
+        else:
+            agent.update(S, R)
+            environment.update(S)
+        # agent.calc_alpha(time)
+        time += 1
         agent.print_Q()
+    agent.print_policy_table(-1)
 
 
 class State:
@@ -169,7 +181,8 @@ class Environment:
     def __init__(self, gamma):
         self.S = con.START
         self.n, self.gamma = -1, gamma
-        self.board = init_board(self.n, self.gamma)
+        self.end = False
+        init_board(self.n, self.gamma)
         seed(con.SEED)
 
     def reset(self):
@@ -185,6 +198,8 @@ class Environment:
             state = next_state(self.S, con.directions[(a + (dirs - 1)) % dirs])
         else:
             state = next_state(self.S, con.directions[(a + 1) % dirs])
+        if state.S == con.GOAL or state.S == con.FAIL:
+            self.end = True
         return state.S, state.R
 
     def update(self, S):
@@ -193,8 +208,8 @@ class Environment:
 
 class Agent:
 
-    def __init__(self, gamma):
-        self.gamma, self.epsilon, self.alpha = gamma, 1, 0.1
+    def __init__(self, gamma, epsilon, alpha):
+        self.gamma, self.epsilon, self.alpha = gamma, epsilon, alpha
         self.S, self.R = con.START, 0
         self.a = con.UP
         dirs = len(con.directions)
@@ -207,6 +222,20 @@ class Agent:
                     q.append(0)
                 row.append(q)
             self.q_table.append(row)
+        self.q_end_table = []
+        for i in range(2):
+            q = []
+            for j in range(dirs):
+                q.append(0)
+            self.q_end_table.append(q)
+
+    def calc_alpha(self, time):
+        self.alpha = np.log(time + 1) / (time + 1)
+        print(self.alpha)
+
+    def reset(self):
+        self.S, self.R = con.START, 0
+        self.a = con.UP
 
     @staticmethod
     def generate_action():
@@ -214,29 +243,31 @@ class Agent:
         index = int(r * 4)
         return con.directions[index]
 
-    def max_action(self, S):
-        x, y = S
-        state_Q = self.q_table[x][y]
+    @staticmethod
+    def max_action(state_Q):
         max_Q, max_a = state_Q[0], 0
         for a in range(len(state_Q)):
             if max_Q < state_Q[a]:
                 max_Q, max_a = state_Q[a], a
-        return a, max_Q
+        return max_a, max_Q
 
     def new_action(self):
         r = random()
         if r < self.epsilon:
             self.epsilon -= con.EPSILON_DECAY
-            self.a = self.generate_action()
-        else:
-            self.a = self.max_action(self.S)[0]
+            # self.a = self.generate_action()
+        # else:
+        self.a = self.max_action(self.q_table[self.S[0]][self.S[1]])[0]
         return self.a
 
     def update(self, S, R):
-        q = self.R + self.gamma * self.max_action(S)[1]
-        x_old, y_old = self.S
+        x_old, y_old, x_new, y_new = self.S, S
+        q = self.R + self.gamma * self.max_action(self.q_table[x_new][y_new])[1]
         self.q_table[x_old][y_old][self.a] = (1 - self.alpha) * self.q_table[x_old][y_old][self.a] + self.alpha * q
-        self.S, self.R = S, R
+        if S == con.GOAL or S == con.FAIL:
+            self.q_table[x_new][y_new][0] = (1 - self.alpha) * self.q_table[x_new][y_new][0] + self.alpha * R
+        else:
+            self.S, self.R = S, R
 
     def print_Q(self):
         print('-------------------------------')
@@ -245,6 +276,22 @@ class Agent:
             for j in range(len(self.q_table[0])):
                 q = self.q_table[i][j]
                 print('Q', i, j, '.__.__.', q[0], q[1], q[2], q[3])
+
+    def print_policy_table(self, n):
+        policy_table = []
+        for i in range(con.ROWS):
+            row = []
+            for j in range(con.COLS):
+                if (i, j) == con.GOAL:
+                    row.append(str(con.POS))
+                elif (i, j) == con.FAIL:
+                    row.append(str(n))  # con.NEG
+                elif (i, j) != con.WALL:
+                    row.append(transform(self.max_action(self.q_table[i][j])[0]))
+                else:
+                    row.append('W')
+            policy_table.append(row)
+        print(tabulate(policy_table, tablefmt='psql'))
 
 
 if __name__ == "__main__":
