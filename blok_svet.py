@@ -112,6 +112,7 @@ def main():
         a = agent.new_action()
         S, R = environment.simulator(a)
         agent.update(S, R)
+        environment.update(S)
         agent.print_Q()
 
 
@@ -174,6 +175,7 @@ class Environment:
     def reset(self):
         self.S = con.START
 
+    # directions = [UP, RIGHT, DOWN, LEFT]
     def simulator(self, a):
         dirs = len(con.directions)
         r = random()
@@ -184,6 +186,9 @@ class Environment:
         else:
             state = next_state(self.S, con.directions[(a + 1) % dirs])
         return state.S, state.R
+
+    def update(self, S):
+        self.S = S
 
 
 class Agent:
@@ -209,8 +214,8 @@ class Agent:
         index = int(r * 4)
         return con.directions[index]
 
-    def max_action(self):
-        x, y = self.S
+    def max_action(self, S):
+        x, y = S
         state_Q = self.q_table[x][y]
         max_Q, max_a = state_Q[0], 0
         for a in range(len(state_Q)):
@@ -224,11 +229,11 @@ class Agent:
             self.epsilon -= con.EPSILON_DECAY
             self.a = self.generate_action()
         else:
-            self.a = self.max_action()[0]
+            self.a = self.max_action(self.S)[0]
         return self.a
 
     def update(self, S, R):
-        q = self.R + self.gamma * self.max_action()[1]
+        q = self.R + self.gamma * self.max_action(S)[1]
         x_old, y_old = self.S
         self.q_table[x_old][y_old][self.a] = (1 - self.alpha) * self.q_table[x_old][y_old][self.a] + self.alpha * q
         self.S, self.R = S, R
