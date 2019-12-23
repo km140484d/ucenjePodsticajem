@@ -1,11 +1,26 @@
-import numpy as np
-import math
-import matplotlib.pyplot as plt
+from tabulate import tabulate
 import constants as con
 
 
 def policy(S):
     return S.max_Q().a
+
+
+def print_policy_table(n):
+    policy_table = []
+    for i in range(con.ROWS):
+        row = []
+        for j in range(con.COLS):
+            if (i, j) == con.GOAL:
+                row.append(str(con.POS))
+            elif (i, j) == con.FAIL:
+                row.append(str(n))  # con.NEG
+            elif (i, j) != con.WALL:
+                row.append(transform(policy(board[i][j])))
+            else:
+                row.append('W')
+        policy_table.append(row)
+    print(tabulate(policy_table, tablefmt='psql'))
 
 
 def next_state(state, dir):
@@ -24,51 +39,57 @@ def next_state(state, dir):
 
 def transform(dir):
     if dir == con.UP:
-        return 'UP'
+        return u'\u2191'
     elif dir == con.DOWN:
-        return 'DOWN'
+        return u'\u2193'
     elif dir == con.LEFT:
-        return 'LEFT'
+        return u'\u2190'
     else:
-        return 'RIGHT'
+        return u'\u2192'
 
 
 def main():
-    for g in con.GAMMA:
-        print('GAMMA: ', g, '-------------------------')
-        board.clear()
-        for i in range(con.ROWS):
-            row = []
-            for j in range(con.COLS):
-                if (i, j) == con.GOAL:
-                    row.append(State((i, j), 1, g))
-                elif (i, j) == con.FAIL:
-                    row.append(State((i, j), -1, g))
-                elif (i, j) != con.WALL:
-                    row.append(State((i, j), -0.04, g))
-                else:
-                    row.append(None)
-            board.append(row)
-        for iter in range(50):
-            for i in range(len(board)):
-                if iter == 49:
-                    print()
-                for j in range(len(board[0])):
-                    if (i, j) != con.WALL and (i, j) != con.GOAL and (i, j) != con.FAIL:
-                        board[i][j].calc_Q()
-                        if iter == 49:
-                            print(i, j, board[i][j].Q[0].next_val, board[i][j].Q[1].next_val, board[i][j].Q[2].next_val,
-                                  board[i][j].Q[3].next_val)
-            for i in range(len(board)):
-                for j in range(len(board[0])):
-                    if (i, j) != con.WALL and (i, j) != con.GOAL and (i, j) != con.FAIL:
-                        board[i][j].next_Q()
+    for n in con.NEG:
+        print()
+        print('NEGATIVE....................................................', n)
+        for g in con.GAMMA:
+            print('GAMMA: ', g, '-------------------------')
+            board.clear()
+            for i in range(con.ROWS):
+                row = []
+                for j in range(con.COLS):
+                    if (i, j) == con.GOAL:
+                        row.append(State((i, j), con.POS, g))
+                    elif (i, j) == con.FAIL:
+                        row.append(State((i, j), n, g))  # con.NEG
+                    elif (i, j) != con.WALL:
+                        row.append(State((i, j), con.NEUT, g))
+                    else:
+                        row.append(None)
+                board.append(row)
+            for iter in range(50):
+                for i in range(len(board)):
+                    if iter == 49:
+                        print()
+                    for j in range(len(board[0])):
+                        if (i, j) != con.WALL and (i, j) != con.GOAL and (i, j) != con.FAIL:
+                            board[i][j].calc_Q()
+                            if iter == 49:
+                                print(i, j, board[i][j].Q[0].next_val, board[i][j].Q[1].next_val,
+                                      board[i][j].Q[2].next_val,
+                                      board[i][j].Q[3].next_val)
+                for i in range(len(board)):
+                    for j in range(len(board[0])):
+                        if (i, j) != con.WALL and (i, j) != con.GOAL and (i, j) != con.FAIL:
+                            board[i][j].next_Q()
 
-        S_curr = board[2][0]
-        while S_curr.S != con.GOAL and S_curr.S != con.FAIL:
-            a = policy(S_curr)
-            S_curr = next_state(S_curr, a)
-            print(transform(a), S_curr.S)
+            print_policy_table(n)
+
+            S_curr = board[2][0]
+            while S_curr.S != con.GOAL and S_curr.S != con.FAIL:
+                a = policy(S_curr)
+                S_curr = next_state(S_curr, a)
+                print(transform(a), S_curr.S)
 
     # print('###################################')
     # for i in range(len(board)):
