@@ -1,7 +1,10 @@
-UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
-directions = [UP, DOWN, LEFT, RIGHT]
-opposite = [DOWN, UP, RIGHT, LEFT]
+UP, RIGHT, DOWN, LEFT = 0, 1, 2, 3
+directions = [UP, RIGHT, DOWN, LEFT]
+opposite = [DOWN, LEFT, UP, RIGHT]
 ROWS, COLS = 3, 4
 GOAL, FAIL, WALL, START = (0, 3), (1, 3), (1, 1), (2, 0)
 GAMMA = [1, 0.9]
 POS, NEG, NEUT = 1, [-1, -100], -0.04
+SEED = 23
+P_HEAD, P_SIDE = 0.8, 0.1
+EPSILON_DECAY = 0.01
