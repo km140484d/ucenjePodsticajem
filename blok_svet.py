@@ -68,64 +68,50 @@ def transform(dir):
 
 
 def main():
-    # for n in con.NEG:
-    #     print()
-    #     print('NEGATIVE....................................................', n)
-    #     for g in con.GAMMA:
-    #         print('GAMMA: ', g, '-------------------------')
-    #         init_board(n, g)
-    #         for iteration in range(50):
-    #             for i in range(len(board)):
-    #                 if iteration == 49:
-    #                     print()
-    #                 for j in range(len(board[0])):
-    #                     if (i, j) != con.WALL and (i, j) != con.GOAL and (i, j) != con.FAIL:
-    #                         board[i][j].calc_Q()
-    #                         if iteration == 49:
-    #                             print(i, j, board[i][j].Q[0].next_val, board[i][j].Q[1].next_val,
-    #                                   board[i][j].Q[2].next_val,
-    #                                   board[i][j].Q[3].next_val)
-    #             for i in range(len(board)):
-    #                 for j in range(len(board[0])):
-    #                     if (i, j) != con.WALL and (i, j) != con.GOAL and (i, j) != con.FAIL:
-    #                         board[i][j].next_Q()
-    #
-    #         print_policy_table(n)
-    #
-    #         S_curr = board[con.START[0]][con.START[1]]
-    #         while S_curr.S != con.GOAL and S_curr.S != con.FAIL:
-    #             a = policy(S_curr)
-    #             S_curr = next_state(S_curr.S, a)
-    #             print(transform(a), S_curr.S)
+    for n in con.NEG:
+        print()
+        print('NEGATIVE....................................................', n)
+        for g in con.GAMMA:
+            print('GAMMA: ', g, '-------------------------')
+            init_board(n, g)
+            for iteration in range(50):
+                for i in range(len(board)):
+                    if iteration == 49:
+                        print()
+                    for j in range(len(board[0])):
+                        if (i, j) != con.WALL and (i, j) != con.GOAL and (i, j) != con.FAIL:
+                            board[i][j].calc_Q()
+                            if iteration == 49:
+                                print(i, j, board[i][j].Q[0].next_val, board[i][j].Q[1].next_val,
+                                      board[i][j].Q[2].next_val,
+                                      board[i][j].Q[3].next_val)
+                for i in range(len(board)):
+                    for j in range(len(board[0])):
+                        if (i, j) != con.WALL and (i, j) != con.GOAL and (i, j) != con.FAIL:
+                            board[i][j].next_Q()
+            print()
+            print_policy_table(n)
+            print()
+            S_curr = board[con.START[0]][con.START[1]]
+            while S_curr.S != con.GOAL and S_curr.S != con.FAIL:
+                a = policy(S_curr)
+                S_curr = next_state(S_curr.S, a)
+                print(transform(a), S_curr.S)
 
-    # print('###################################')
-    # for i in range(len(board)):
-    #     print()
-    #     for j in range(len(board[0])):
-    #         # S = board[i][j]
-    #         # print(board)
-    #         # for k in range(4):
-    #         if board[i][j] is not None:
-    #             print(i, j, 'Q', board[i][j].max_Q().val)
-
-    # for l in con.ALPHA:
-    environment, agent = Environment(0.9), Agent(0.9, 1, 0.1)
-    time = 0
-    while agent.epsilon > 0:
-        a = agent.new_action()
-        S, R = environment.simulator(a)
-        if environment.end:
+    for l in range(len(con.ALPHA)):
+        environment, agent = Environment(con.Q_GAMMA), Agent(con.Q_GAMMA, con.EPSILON, con.ALPHA[l])
+        for i in range(1000):
+            a = agent.new_action()
+            S, R = environment.simulator(a)
             agent.update(S, R)
-            environment.end = False
-            environment.reset()
-            agent.reset()
-        else:
-            agent.update(S, R)
-            environment.update(S)
-        # agent.calc_alpha(time)
-        time += 1
-        agent.print_Q()
-    agent.print_policy_table(-1)
+            if environment.end:
+                environment.end = False
+                environment.reset()
+                agent.reset()
+            else:
+                environment.update(S)
+            # agent.print_Q()
+        agent.print_policy_table(-1)
 
 
 class State:
@@ -228,14 +214,17 @@ class Agent:
             for j in range(dirs):
                 q.append(0)
             self.q_end_table.append(q)
+        self.t = 0
 
-    def calc_alpha(self, time):
-        self.alpha = np.log(time + 1) / (time + 1)
-        print(self.alpha)
+    def calc_alpha(self):
+        self.alpha = np.log(self.t + 1) / (self.t + 1)
+        # print(self.alpha)
 
     def reset(self):
         self.S, self.R = con.START, 0
         self.a = con.UP
+        self.t += 1
+        self.calc_alpha()
 
     @staticmethod
     def generate_action():
@@ -254,14 +243,14 @@ class Agent:
     def new_action(self):
         r = random()
         if r < self.epsilon:
-            self.epsilon -= con.EPSILON_DECAY
-            # self.a = self.generate_action()
-        # else:
-        self.a = self.max_action(self.q_table[self.S[0]][self.S[1]])[0]
+            self.a = self.generate_action()
+        else:
+            self.a = self.max_action(self.q_table[self.S[0]][self.S[1]])[0]
         return self.a
 
     def update(self, S, R):
-        x_old, y_old, x_new, y_new = self.S, S
+        x_old, y_old = self.S
+        x_new, y_new = S
         q = self.R + self.gamma * self.max_action(self.q_table[x_new][y_new])[1]
         self.q_table[x_old][y_old][self.a] = (1 - self.alpha) * self.q_table[x_old][y_old][self.a] + self.alpha * q
         if S == con.GOAL or S == con.FAIL:
